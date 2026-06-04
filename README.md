@@ -55,14 +55,17 @@ O resultado esperado é um **protótipo funcional** que resolva um problema real
 
 ## 👥 Equipe Desenvolvedora
 
-- **Anderson de Matos Guimarães** — branch `anderson-ds`
-  E-mail: anderson.m.guimaraes@icloud.com
+- **Anderson de Matos Guimarães**  
+  Branch `anderson-ds`  
+  E-mail: anderson.m.guimaraes@icloud.com  
   GitHub: https://github.com/PadawanXXVI
-- **Paulo Hahn Siqueira** — branch `paulo-dev`
-  E-mail: paulohahn2000@gmail.com
+- **Paulo Hahn Siqueira**  
+  Branch `paulo-dev`  
+  E-mail: paulohahn2000@gmail.com  
   GitHub: https://github.com/paulohahnsiq
-- **Raquel Lopes da Silva** — branch `raquel-da`
-  E-mail: datarlopes@gmail.com
+- **Raquel Lopes da Silva**  
+  Branch `raquel-da`  
+  E-mail: datarlopes@gmail.com  
   GitHub: https://github.com/raqueldatainfo  
 
 ---
