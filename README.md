@@ -64,7 +64,7 @@ O resultado esperado é um **protótipo funcional** que resolva um problema real
   E-mail: paulohahn2000@gmail.com  
   GitHub: https://github.com/paulohahnsiq
 - **Raquel Lopes da Silva**  
-  Branch `raquel-da`  
+  Branch `raquel-ds`  
   E-mail: datarlopes@gmail.com  
   GitHub: https://github.com/raqueldatainfo  
 
