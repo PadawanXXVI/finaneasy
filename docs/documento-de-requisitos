@@ -132,3 +132,45 @@ Usuário escolhe sair → sistema encerra.
 - Exportação de relatórios  
 
 ---
+
+## 10. Arquitetura Proposta (Clean Architecture em Camadas)
+
+finaneasy/
+├── domain/          # Entidades e regras de negócio (PURE PYTHON - zero dependências)
+│   ├── entities.py       # Transacao, Receita, Despesa (dataclasses)
+│   └── value_objects.py  # Moeda, DataOpcao, TipoTransacao (enums/objetos valor)
+├── use_cases/       # Casos de uso orquestrando regras
+│   ├── registrar_transacao.py
+│   ├── calcular_saldo.py
+│   └── listar_transacoes.py
+├── interface_adapters/  # Adaptação entre terminal e use cases
+│   ├── controllers/      # Recebe input do usuário, chama use cases
+│   ├── presenters/       # Formata saída (console, futuro: JSON, GUI)
+│   └── repositories/     # Armazenamento (memória, futuro: JSON, SQLite)
+└── main.py               # Ponto de entrada e injeção de dependência manual
+
+
+
+## 11. Árvore de Diretórios
+
+finaneasy/
+├── domain/
+│   ├── __init__.py
+│   ├── entities.py              # Dataclasses: Transacao, Receita, Despesa
+│   ├── value_objects.py         # Enum: TipoTransacao, Moeda (Decimal)
+│   └── exceptions.py            # Hierarquia: FinanEasyException -> ValorInvalidoError, etc.
+├── use_cases/
+│   ├── __init__.py
+│   └── transacoes.py            # Orquestração: registrar, listar, calcular_resumo
+├── interface_adapters/
+│   ├── __init__.py
+│   ├── controllers.py            # Padrão State: menu interativo com estados
+│   ├── presenters.py             # Formatação: tabelas, moeda BR, saída colorida (ANSI)
+│   └── repositories.py           # Repositório em memória (padrão Repository)
+├── tests/
+│   ├── __init__.py
+│   ├── test_domain.py            # Testes de entidades e value objects
+│   ├── test_use_cases.py         # Testes de casos de uso
+│   └── test_repository.py        # Testes do repositório em memória
+├── main.py                       # Ponto de entrada + injeção de dependência manual
+└── README.md                     # Documentação técnica
