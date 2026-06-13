@@ -31,7 +31,7 @@ Nunca faça commits diretamente na `main`.
 
 O título deve seguir o padrão:
 
-```
+```bash
 tipo(escopo): descrição breve da mudança
 ```
 
@@ -47,16 +47,20 @@ Exemplos:
 
 A descrição deve conter:
 
-### ✔ 1. O que foi feito  
+### ✔ 1. O que foi feito
+
 Explique de forma clara e objetiva.
 
-### ✔ 2. Por que foi feito  
+### ✔ 2. Por que foi feito
+
 Contextualize a necessidade da mudança.
 
-### ✔ 3. Como testar  
+### ✔ 3. Como testar
+
 Passos simples para validar o funcionamento.
 
-### ✔ 4. Checklist  
+### ✔ 4. Checklist
+
 Inclua:
 
 - Código testado  
@@ -67,7 +71,7 @@ Inclua:
 
 Exemplo de checklist:
 
-```
+```bash
 - [x] Código testado
 - [x] Commits seguindo Conventional Commits
 - [x] Branch atualizada com main
@@ -80,7 +84,7 @@ Exemplo de checklist:
 
 Sempre atualize sua branch com a `main`:
 
-```
+```bash
 git checkout main
 git pull
 git checkout sua-branch
@@ -89,7 +93,7 @@ git merge main
 
 Ou, se preferir rebase:
 
-```
+```bash
 git pull --rebase origin main
 ```
 
@@ -98,6 +102,7 @@ git pull --rebase origin main
 ## 👀 Processo de Revisão
 
 ### ✔ Quem revisa?
+
 Normalmente **Anderson**, mas qualquer membro pode revisar.
 
 ### ✔ O que verificar na revisão?
@@ -110,6 +115,7 @@ Normalmente **Anderson**, mas qualquer membro pode revisar.
 - Documentação atualizada, se necessário  
 
 ### ✔ Como aprovar
+
 Comente “Aprovado” ou use o botão **Approve** no GitHub.
 
 ---
