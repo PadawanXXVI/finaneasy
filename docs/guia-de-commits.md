@@ -17,13 +17,13 @@ Este guia define como escrever mensagens de commit de forma padronizada, clara e
 
 Formato padrão:
 
-```
+```bash
 tipo(escopo): descrição breve e objetiva
 ```
 
 Exemplos:
 
-```
+```bash
 feat(models): adicionar classe Transaction
 fix(services): corrigir cálculo de saldo
 docs(readme): atualizar seção de equipe
@@ -34,31 +34,38 @@ refactor(ui): reorganizar funções do menu
 
 ## 🏷 Tipos de Commit Permitidos
 
-### feat  
+### feat
+
 Nova funcionalidade adicionada ao projeto.  
 Ex.: `feat: criar módulo de transações`
 
-### fix  
+### fix
+
 Correção de bug.  
 Ex.: `fix: corrigir erro no cálculo de despesas`
 
-### docs  
+### docs
+
 Alterações na documentação (README, ABOUT, guias etc.).  
 Ex.: `docs(readme): adicionar versão inicial`
 
-### refactor  
+### refactor
+
 Refatoração de código sem alterar comportamento.  
 Ex.: `refactor: melhorar organização das classes`
 
-### style  
+### style
+
 Mudanças que não afetam lógica (espaços, formatação, nomes).  
 Ex.: `style: ajustar indentação`
 
-### test  
+### test
+
 Adição ou ajuste de testes.  
 Ex.: `test: adicionar testes para FinanceManager`
 
-### chore  
+### chore
+
 Tarefas internas que não afetam o código de produção.  
 Ex.: `chore: atualizar .gitignore`
 
@@ -80,7 +87,7 @@ Use escopos para indicar a área afetada:
 
 Exemplo:
 
-```
+```bash
 feat(models): criar classe Expense
 ```
 
@@ -119,7 +126,7 @@ A descrição deve ser:
 
 Quando fechar uma milestone importante, use commits como:
 
-```
+```bash
 chore(release): preparar versão v0.1.0
 docs: atualizar README para entrega do hackathon
 ```
