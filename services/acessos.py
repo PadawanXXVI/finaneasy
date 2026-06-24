@@ -406,12 +406,140 @@ def get_audit_log(user_id=None, limit=50):
         return []
 
 # =======================================
-# FUNÇÕES AUXILIARES (para compatibilidade)
+# FUNÇÕES DE CONTAS (ACCOUNTS)
 # =======================================
-def generate_fake_data():
-    """Gera dados fake para testes (opcional)"""
-    pass
+def criar_conta(user_id, account_name, account_type="Corrente", bank_name=None, balance=0):
+    """Cria uma nova conta para o usuário"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO accounts (user_id, account_name, account_type, bank_name, balance)
+        VALUES (?, ?, ?, ?, ?)
+    """, (user_id, account_name, account_type, bank_name, balance))
+    conn.commit()
+    account_id = cursor.lastrowid
+    conn.close()
+    log_audit(user_id, "CREATE_ACCOUNT", f"Conta {account_name} criada")
+    return account_id
 
-def load_df():
-    """Carrega dados em DataFrame (opcional)"""
-    pass
+def listar_contas(user_id):
+    """Lista as contas ativas de um usuário"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT id, account_name, account_type, bank_name, balance, active, created_at
+        FROM accounts
+        WHERE user_id = ? AND active = 1
+        ORDER BY created_at
+    """, (user_id,))
+    contas = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return contas
+
+def obter_conta(account_id):
+    """Obtém uma conta pelo id"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM accounts WHERE id = ?", (account_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+def saldo_total(user_id):
+    """Soma o saldo de todas as contas ativas do usuário"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT COALESCE(SUM(balance), 0) AS total FROM accounts WHERE user_id = ? AND active = 1",
+        (user_id,)
+    )
+    total = cursor.fetchone()["total"]
+    conn.close()
+    return total
+
+# =======================================
+# FUNÇÕES DE TRANSAÇÕES (TRANSACTIONS)
+# =======================================
+def _atualizar_saldo(conn, account_id, delta):
+    """Aplica delta ao saldo da conta dentro de uma transação"""
+    conn.execute(
+        "UPDATE accounts SET balance = balance + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (delta, account_id)
+    )
+
+def depositar(account_id, user_id, amount, category="Depósito", description=""):
+    """Registra um depósito e credita o saldo da conta"""
+    if amount <= 0:
+        return False, "Valor deve ser maior que zero."
+    
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO transactions (account_id, user_id, transaction_type, category, amount, description, transaction_date)
+            VALUES (?, ?, 'Depósito', ?, ?, ?, ?)
+        """, (account_id, user_id, category, amount, description, datetime.now()))
+        _atualizar_saldo(conn, account_id, amount)
+        conn.commit()
+        log_audit(user_id, "DEPOSIT", f"Depósito de {amount}")
+        return True, "Depósito realizado com sucesso!"
+    except Exception as e:
+        conn.rollback()
+        return False, f"Erro ao depositar: {str(e)}"
+    finally:
+        conn.close()
+
+def sacar(account_id, user_id, amount, category="Saque", description=""):
+    """Registra um saque, validando saldo suficiente antes de debitar"""
+    if amount <= 0:
+        return False, "Valor deve ser maior que zero."
+    
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT balance FROM accounts WHERE id = ?", (account_id,))
+        row = cursor.fetchone()
+        if row is None:
+            return False, "Conta não encontrada."
+        if row["balance"] < amount:
+            return False, "Saldo insuficiente."
+        
+        cursor.execute("""
+            INSERT INTO transactions (account_id, user_id, transaction_type, category, amount, description, transaction_date)
+            VALUES (?, ?, 'Saque', ?, ?, ?, ?)
+        """, (account_id, user_id, category, amount, description, datetime.now()))
+        _atualizar_saldo(conn, account_id, -amount)
+        conn.commit()
+        log_audit(user_id, "WITHDRAW", f"Saque de {amount}")
+        return True, "Saque realizado com sucesso!"
+    except Exception as e:
+        conn.rollback()
+        return False, f"Erro ao sacar: {str(e)}"
+    finally:
+        conn.close()
+
+def listar_transacoes(user_id, account_id=None, limit=50):
+    """Lista o histórico de transações do usuário"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    if account_id:
+        cursor.execute("""
+            SELECT t.id, t.transaction_type, t.category, t.amount, t.description, t.transaction_date, a.account_name
+            FROM transactions t
+            JOIN accounts a ON a.id = t.account_id
+            WHERE t.user_id = ? AND t.account_id = ?
+            ORDER BY t.transaction_date DESC
+            LIMIT ?
+        """, (user_id, account_id, limit))
+    else:
+        cursor.execute("""
+            SELECT t.id, t.transaction_type, t.category, t.amount, t.description, t.transaction_date, a.account_name
+            FROM transactions t
+            JOIN accounts a ON a.id = t.account_id
+            WHERE t.user_id = ?
+            ORDER BY t.transaction_date DESC
+            LIMIT ?
+        """, (user_id, limit))
+    transacoes = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return transacoes

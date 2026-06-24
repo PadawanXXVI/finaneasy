@@ -11,14 +11,21 @@ from datetime import datetime
 from io import BytesIO
 from fpdf import FPDF
 
-from services.acessos import (
-    init_db, 
-    authenticate, 
+from finaneasy.services.acessos import (
+    init_db,
+    authenticate,
     register_user,
-    log_audit, 
+    log_audit,
     get_db_connection,
     get_user_by_username,
-    update_user_profile
+    update_user_profile,
+    criar_conta,
+    listar_contas,
+    obter_conta,
+    saldo_total,
+    depositar,
+    sacar,
+    listar_transacoes
 )
 
 # =======================================
@@ -208,64 +215,61 @@ def page_dashboard_main():
     """Dashboard principal com métricas"""
     st.markdown("### 📊 Visão Geral")
     
+    saldo = saldo_total(st.session_state.user_id)
+    contas = listar_contas(st.session_state.user_id)
+    transacoes = listar_transacoes(st.session_state.user_id, limit=5)
+    
+    receitas = sum(t['amount'] for t in transacoes if t['transaction_type'] == 'Depósito')
+    despesas = sum(t['amount'] for t in transacoes if t['transaction_type'] == 'Saque')
+    
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.markdown("""
+        st.markdown(f"""
         <div class='card'>
             <div style='color: #667eea; font-size: 0.9rem;'>Saldo Total</div>
-            <div class='metric'>R$ 5.420,00</div>
+            <div class='metric'>R$ {saldo:.2f}</div>
         </div>
         """, unsafe_allow_html=True)
     
     with col2:
-        st.markdown("""
+        st.markdown(f"""
         <div class='card'>
             <div style='color: #667eea; font-size: 0.9rem;'>Receitas</div>
-            <div class='metric' style='color: #28a745;'>R$ 8.230,50</div>
+            <div class='metric' style='color: #28a745;'>R$ {receitas:.2f}</div>
         </div>
         """, unsafe_allow_html=True)
     
     with col3:
-        st.markdown("""
+        st.markdown(f"""
         <div class='card'>
             <div style='color: #667eea; font-size: 0.9rem;'>Despesas</div>
-            <div class='metric' style='color: #dc3545;'>R$ 2.810,50</div>
+            <div class='metric' style='color: #dc3545;'>R$ {despesas:.2f}</div>
         </div>
         """, unsafe_allow_html=True)
     
     with col4:
-        st.markdown("""
+        st.markdown(f"""
         <div class='card'>
-            <div style='color: #667eea; font-size: 0.9rem;'>Transações</div>
-            <div class='metric'>127</div>
+            <div style='color: #667eea; font-size: 0.9rem;'>Contas</div>
+            <div class='metric'>{len(contas)}</div>
         </div>
         """, unsafe_allow_html=True)
     
     st.divider()
     
-    # Gráficos
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("#### 📈 Evolução do Saldo")
-        data = {
-            'Data': pd.date_range('2024-01-01', periods=12, freq='M'),
-            'Saldo': np.cumsum(np.random.randn(12) * 500 + 300)
-        }
-        df = pd.DataFrame(data)
-        fig = px.line(df, x='Data', y='Saldo', title='Saldo ao Longo do Tempo', markers=True)
-        st.plotly_chart(fig, use_container_width=True)
-    
-    with col2:
-        st.markdown("#### 💰 Distribuição de Categorias")
-        data = {
-            'Categoria': ['Alimentação', 'Transporte', 'Saúde', 'Educação', 'Outros'],
-            'Valor': [450, 320, 180, 250, 210]
-        }
-        df = pd.DataFrame(data)
-        fig = px.pie(df, values='Valor', names='Categoria', title='Gastos por Categoria')
-        st.plotly_chart(fig, use_container_width=True)
+    if transacoes:
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("#### 📈 Últimas Transações")
+            df_trans = pd.DataFrame(transacoes[:5])
+            st.dataframe(df_trans[['transaction_date', 'transaction_type', 'category', 'amount', 'account_name']], use_container_width=True)
+        
+        with col2:
+            st.markdown("#### 💳 Suas Contas")
+            if contas:
+                df_contas = pd.DataFrame(contas)
+                st.dataframe(df_contas[['account_name', 'account_type', 'bank_name', 'balance']], use_container_width=True)
 
 def page_contas():
     """Página de gerenciamento de contas"""
@@ -274,17 +278,32 @@ def page_contas():
     col1, col2 = st.columns([3, 1])
     with col2:
         if st.button("➕ Nova Conta"):
-            st.info("Funcionalidade em desenvolvimento")
+            st.session_state.show_nova_conta = True
     
-    # Exemplo de dados
-    contas = pd.DataFrame({
-        'Conta': ['Principal', 'Poupança', 'Investimentos'],
-        'Banco': ['Banco A', 'Banco B', 'Banco C'],
-        'Saldo': ['R$ 5.420,00', 'R$ 2.150,00', 'R$ 8.900,00'],
-        'Status': ['✅ Ativa', '✅ Ativa', '✅ Ativa']
-    })
+    if st.session_state.get("show_nova_conta", False):
+        with st.form("nova_conta_form"):
+            st.markdown("#### Criar Nova Conta")
+            nome_conta = st.text_input("Nome da Conta", placeholder="Ex: Conta Principal")
+            tipo_conta = st.selectbox("Tipo de Conta", ["Corrente", "Poupança", "Investimento"])
+            banco = st.text_input("Nome do Banco", placeholder="Ex: Banco A")
+            saldo_inicial = st.number_input("Saldo Inicial", min_value=0.0, step=0.01)
+            
+            if st.form_submit_button("✅ Criar Conta"):
+                if nome_conta:
+                    conta_id = criar_conta(st.session_state.user_id, nome_conta, tipo_conta, banco, saldo_inicial)
+                    st.success(f"✅ Conta criada com sucesso! ID: {conta_id}")
+                    st.session_state.show_nova_conta = False
+                    st.rerun()
+                else:
+                    st.error("⚠️ Preencha o nome da conta!")
     
-    st.dataframe(contas, use_container_width=True)
+    contas = listar_contas(st.session_state.user_id)
+    
+    if contas:
+        df = pd.DataFrame(contas)
+        st.dataframe(df[['id', 'account_name', 'account_type', 'bank_name', 'balance', 'active']], use_container_width=True)
+    else:
+        st.info("Você não possui contas cadastradas. Crie uma nova conta!")
 
 def page_transacoes():
     """Página de transações"""
@@ -292,20 +311,50 @@ def page_transacoes():
     
     col1, col2 = st.columns([2, 1])
     with col1:
-        tipo = st.selectbox("Tipo de Transação", ["Receita", "Despesa"])
+        tipo_trans = st.selectbox("Tipo de Transação", ["Depósito", "Saque"])
     with col2:
         if st.button("➕ Nova Transação"):
-            st.info("Funcionalidade em desenvolvimento")
+            st.session_state.show_nova_trans = True
     
-    # Exemplo de dados
-    transacoes = pd.DataFrame({
-        'Data': pd.date_range('2024-01-01', periods=5),
-        'Tipo': ['Receita', 'Despesa', 'Receita', 'Despesa', 'Despesa'],
-        'Categoria': ['Salário', 'Alimentação', 'Freelance', 'Transporte', 'Saúde'],
-        'Valor': ['R$ 3.500,00', '-R$ 450,00', 'R$ 1.200,00', '-R$ 150,00', '-R$ 200,00']
-    })
+    contas = listar_contas(st.session_state.user_id)
     
-    st.dataframe(transacoes, use_container_width=True)
+    if st.session_state.get("show_nova_trans", False) and contas:
+        with st.form("nova_trans_form"):
+            st.markdown(f"#### Registrar {tipo_trans}")
+            conta_id = st.selectbox("Conta", options=[c['id'] for c in contas], 
+                                   format_func=lambda x: next(c['account_name'] for c in contas if c['id'] == x))
+            categoria = st.text_input("Categoria", placeholder="Ex: Salário, Alimentação")
+            valor = st.number_input("Valor (R$)", min_value=0.01, step=0.01)
+            descricao = st.text_area("Descrição", placeholder="Adicione uma descrição (opcional)")
+            
+            if st.form_submit_button(f"✅ Registrar {tipo_trans}"):
+                if categoria and valor > 0:
+                    if tipo_trans == "Depósito":
+                        sucesso, msg = depositar(conta_id, st.session_state.user_id, valor, categoria, descricao)
+                    else:
+                        sucesso, msg = sacar(conta_id, st.session_state.user_id, valor, categoria, descricao)
+                    
+                    if sucesso:
+                        st.success(f"✅ {msg}")
+                        st.session_state.show_nova_trans = False
+                        st.rerun()
+                    else:
+                        st.error(f"❌ {msg}")
+                else:
+                    st.error("⚠️ Preencha todos os campos!")
+    
+    elif not contas:
+        st.warning("⚠️ Crie uma conta antes de registrar transações!")
+    
+    st.divider()
+    st.markdown("#### Histórico de Transações")
+    transacoes = listar_transacoes(st.session_state.user_id)
+    
+    if transacoes:
+        df = pd.DataFrame(transacoes)
+        st.dataframe(df[['transaction_date', 'transaction_type', 'category', 'amount', 'description', 'account_name']], use_container_width=True)
+    else:
+        st.info("Nenhuma transação registrada.")
 
 def page_relatorios():
     """Página de relatórios"""
@@ -325,14 +374,24 @@ def page_configuracoes():
     with st.form("config_form"):
         st.markdown("#### Dados Pessoais")
         email = st.text_input("Email", value=user.get('email', '') if user else '')
-        telefone = st.text_input("Telefone", placeholder="(11) 99999-9999")
         
         st.markdown("#### Segurança")
         nova_senha = st.text_input("Nova Senha", type="password", placeholder="Deixe em branco para manter a atual")
         confirmar_senha = st.text_input("Confirmar Senha", type="password")
         
         if st.form_submit_button("💾 Salvar Alterações"):
-            st.success("✅ Configurações atualizadas com sucesso!")
+            if nova_senha and nova_senha != confirmar_senha:
+                st.error("❌ As senhas não coincidem!")
+            else:
+                sucesso, msg = update_user_profile(
+                    st.session_state.user_id, 
+                    email=email if email != user.get('email', '') else None,
+                    password=nova_senha if nova_senha else None
+                )
+                if sucesso:
+                    st.success(f"✅ {msg}")
+                else:
+                    st.error(f"❌ {msg}")
 
 def page_auditoria():
     """Página de auditoria"""
@@ -370,3 +429,17 @@ def main():
 
 if __name__ == "__main__":
     main()
+#Dicas Para rodar:
+#####cd C:\Users\Raquel\Desktop\fineansy1.2
+#python -m venv .venv
+# .venv\Scripts\activate  # Ativar ambiente virtual (Windows)
+
+#pip install streamlit pandas numpy matplotlib sqlalchemy python-dotenv
+# python -m pip install --upgrade pip
+# pip install streamlit 
+#pip install plotly
+#pip install fpdf2
+#python -m streamlit run app.py arrastar o arquivo app.py
+
+
+   
